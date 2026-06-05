@@ -1,72 +1,105 @@
-# Real-Time Collaborative Notes
+# Real-Time Collaborative Notes App 🚀
 
-A production-grade real-time collaborative notes application built with:
+A production-grade, highly scalable real-time collaborative notes application built with a modern tech stack. Experience Google Docs-like simultaneous editing with multiple users, offline capabilities, and a beautiful dark-mode glassmorphism UI.
 
-- **Frontend:** React 18 + TypeScript + TipTap (rich text editor) + Yjs (CRDT for real-time sync) + Vite + Tailwind CSS
-- **Backend API:** Node.js + Fastify + Prisma + JWT Auth + BullMQ
-- **Collab Server:** y-websocket + Redis pub/sub for cross-pod sync
-- **Database:** PostgreSQL 15 + Redis 7 + MinIO (S3-compatible)
-- **Infra:** Docker Compose (local dev) + Kubernetes/Helm (production)
+## ✨ Key Features
 
-## Features
+- **Real-Time Collaboration**: Powered by Yjs (CRDT) and TipTap for conflict-free, multi-user rich text editing.
+- **Offline Support**: Edits are stored locally using IndexedDB (`y-indexeddb`) and synced automatically when back online.
+- **Rich Text Editor**: Support for headings, lists, code blocks with syntax highlighting, blockquotes, and multiple formatting options.
+- **Workspaces & RBAC**: Isolate notes within workspaces. Control access with Owner, Editor, and Viewer roles.
+- **Threaded Comments**: Leave comments on notes and reply in threads. Resolve or delete comments when done.
+- **Robust Persistence**: Edits sync to a Y-Websocket server, then broadcast to other instances via Redis Pub/Sub, and periodically flushed as snapshots to PostgreSQL using BullMQ.
+- **Stunning UI**: Dark-mode, responsive, glassmorphism design using Tailwind CSS.
 
-- ✅ Real-time collaborative editing with multiple cursors
-- ✅ Workspace/team model with RBAC (owner, admin, editor, viewer)
-- ✅ Rich-text editor with headings, lists, code blocks, @mentions
-- ✅ Full-text search
-- ✅ Offline support with automatic sync on reconnect
-- ✅ Version history (last 100 snapshots per note)
-- ✅ File/image attachments
-- ✅ Threaded comments on notes
+## 🛠️ Tech Stack
 
-## Getting Started
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, TipTap, Zustand, React Query
+- **Backend API**: Node.js, Fastify, Prisma ORM, JWT Authentication
+- **Collab Server**: `y-websocket`, Redis, BullMQ
+- **Database & Services**: PostgreSQL 15, Redis 7, MinIO (S3-compatible storage)
+- **Monorepo**: pnpm workspaces, Turborepo
+- **CI/CD**: GitHub Actions (Linting, Testing, Docker image builds to GHCR)
+
+## 📂 Project Structure
+
+This project is a monorepo leveraging Turborepo.
+
+```text
+├── apps/
+│   └── web/                # React Vite application
+├── services/
+│   ├── api/                # Fastify REST API (Auth, Workspaces, Notes CRUD)
+│   └── collab/             # WebSocket server for Yjs sync
+├── packages/
+│   ├── config/             # Shared Zod schemas for env validation
+│   ├── db/                 # Prisma schema, client, and migrations
+│   └── types/              # Shared TypeScript definitions
+├── infra/                  # Docker Compose configuration
+└── .github/workflows/      # CI/CD pipelines
+```
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 20+
-- pnpm 9+
-- Docker Desktop
 
-### Local Development
+- [Node.js](https://nodejs.org/) v20+
+- [pnpm](https://pnpm.io/) v9+
+- [Docker](https://www.docker.com/) & Docker Compose
+
+### 1. Clone & Install Dependencies
 
 ```bash
-# Install dependencies
+git clone https://github.com/wrewre/Collaborative-Notes.git
+cd Collaborative-Notes
+
+# Install all monorepo dependencies
 pnpm install
+```
 
-# Start all services with Docker Compose
-docker compose -f infra/docker-compose.yml up -d
+### 2. Environment Variables
 
-# Run database migrations
-pnpm db:migrate
+The project uses `.env` files for configuration. For quick local Docker runs, `docker-compose.yml` provides all required environment variables automatically.
 
-# Start all dev servers
+### 3. Run with Docker Compose (Recommended)
+
+The easiest way to run the entire stack (Postgres, Redis, MinIO, API, Collab Server, and Web Frontend) is via Docker Compose:
+
+```bash
+docker compose -f infra/docker-compose.yml up --build -d
+```
+
+### 4. Run Locally (Development Mode)
+
+If you prefer to run the Node.js services locally while only running the databases in Docker:
+
+1. Start databases:
+```bash
+docker compose -f infra/docker-compose.yml up postgres redis minio minio-setup -d
+```
+
+2. Run Prisma migrations:
+```bash
+# Set DATABASE_URL locally in packages/db/.env first
+pnpm --filter @collab-notes/db migrate:deploy
+```
+
+3. Start all services via Turborepo:
+```bash
 pnpm dev
 ```
 
-### Services
-| Service | URL |
-|---------|-----|
-| Web App | http://localhost:3000 |
-| API | http://localhost:4000 |
-| Collab WS | ws://localhost:4001 |
-| MinIO Console | http://localhost:9001 |
+### 🌐 Accessing the Services
 
-## Architecture
+- **Web App**: http://localhost:3000
+- **REST API**: http://localhost:4000
+- **WebSocket Server**: ws://localhost:4001
+- **MinIO Console**: http://localhost:9001 (Credentials: `minioadmin` / `minioadmin`)
 
-```
-apps/
-  web/              # React frontend
-services/
-  api/              # Fastify REST API
-  collab/           # y-websocket collaboration server
-packages/
-  db/               # Prisma client (shared)
-  types/            # Shared TypeScript types
-  config/           # Shared env validation
-infra/
-  docker-compose.yml
-  helm/
-```
+## 🚢 Deployment
 
-## License
+The repository includes GitHub Actions workflows (`.github/workflows/deploy.yml`) that automatically build Docker images for `api`, `collab`, and `web`, pushing them to the GitHub Container Registry (GHCR) upon merges to the `main` branch.
 
-MIT
+## 📄 License
+
+This project is open-source and available under the MIT License.
