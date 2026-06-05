@@ -1,0 +1,27 @@
+{
+  "name": "collab-notes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-Time Collaborative Notes App",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "db:migrate": "pnpm --filter @collab-notes/db migrate:dev",
+    "db:generate": "pnpm --filter @collab-notes/db generate",
+    "db:studio": "pnpm --filter @collab-notes/db studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.5",
+    "prettier": "^3.3.2",
+    "@types/node": "^20.14.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.4.0"
+}
