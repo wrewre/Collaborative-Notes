@@ -1,0 +1,169 @@
+// This is your Prisma schema file
+// Documentation: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  avatarUrl String?  @map("avatar_url")
+  password  String?  // null for OAuth users
+  provider  String   @default("email")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  workspaceMemberships WorkspaceMember[]
+  ownedNotes           Note[]            @relation("NoteCreator")
+  editedNotes          Note[]            @relation("NoteLastEditor")
+  noteVersions         NoteVersion[]
+  comments             Comment[]
+  attachments          Attachment[]
+  invitedMembers       WorkspaceMember[] @relation("InvitedBy")
+  folders              Folder[]
+
+  @@map("users")
+}
+
+// ─── Workspaces ───────────────────────────────────────────────────────────────
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("free")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  members WorkspaceMember[]
+  notes   Note[]
+  folders Folder[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  workspaceId String    @map("workspace_id")
+  userId      String    @map("user_id")
+  role        String    // owner | admin | editor | viewer
+  invitedById String?   @map("invited_by")
+  joinedAt    DateTime  @default(now()) @map("joined_at")
+
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy  User?     @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@id([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+// ─── Folders ─────────────────────────────────────────────────────────────────
+
+model Folder {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")
+  parentId    String?  @map("parent_id")
+  name        String
+  createdById String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent    Folder?   @relation("FolderChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Folder[]  @relation("FolderChildren")
+  notes     Note[]
+  createdBy User      @relation(fields: [createdById], references: [id])
+
+  @@map("folders")
+}
+
+// ─── Notes ───────────────────────────────────────────────────────────────────
+
+model Note {
+  id            String   @id @default(uuid())
+  workspaceId   String   @map("workspace_id")
+  folderId      String?  @map("folder_id")
+  title         String   @default("Untitled")
+  contentText   String?  @map("content_text")
+  ydocSnapshot  Bytes?   @map("ydoc_snapshot")
+  ydocVersion   Int      @default(0) @map("ydoc_version")
+  isDeleted     Boolean  @default(false) @map("is_deleted")
+  createdById   String   @map("created_by")
+  lastEditedById String? @map("last_edited_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folder       Folder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdBy    User         @relation("NoteCreator", fields: [createdById], references: [id])
+  lastEditedBy User?        @relation("NoteLastEditor", fields: [lastEditedById], references: [id])
+  versions     NoteVersion[]
+  comments     Comment[]
+  attachments  Attachment[]
+
+  @@index([workspaceId, isDeleted, updatedAt(sort: Desc)])
+  @@index([folderId])
+  @@map("notes")
+}
+
+// ─── Version History ─────────────────────────────────────────────────────────
+
+model NoteVersion {
+  id           String   @id @default(uuid())
+  noteId       String   @map("note_id")
+  ydocSnapshot Bytes    @map("ydoc_snapshot")
+  contentText  String?  @map("content_text")
+  createdById  String   @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  note      Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@index([noteId, createdAt(sort: Desc)])
+  @@map("note_versions")
+}
+
+// ─── Comments ─────────────────────────────────────────────────────────────────
+
+model Comment {
+  id        String   @id @default(uuid())
+  noteId    String   @map("note_id")
+  parentId  String?  @map("parent_id")
+  userId    String   @map("user_id")
+  body      String
+  resolved  Boolean  @default(false)
+  anchorPos Int?     @map("anchor_pos")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  note     Note      @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+  user     User      @relation(fields: [userId], references: [id])
+
+  @@index([noteId, resolved])
+  @@map("comments")
+}
+
+// ─── Attachments ─────────────────────────────────────────────────────────────
+
+model Attachment {
+  id         String   @id @default(uuid())
+  noteId     String   @map("note_id")
+  uploaderId String   @map("uploader_id")
+  fileName   String   @map("file_name")
+  mimeType   String   @map("mime_type")
+  sizeBytes  Int      @map("size_bytes")
+  s3Key      String   @map("s3_key")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  note     Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  uploader User @relation(fields: [uploaderId], references: [id])
+
+  @@map("attachments")
+}
