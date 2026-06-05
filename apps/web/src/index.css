@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface-950 text-zinc-100 font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-brand-600/40;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-zinc-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-zinc-600;
+  }
+}
+
+@layer components {
+  /* ─── TipTap Editor Styles ─────────────────────────── */
+  .tiptap {
+    @apply outline-none min-h-full text-zinc-100;
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+
+  .tiptap p {
+    @apply my-2;
+  }
+
+  .tiptap p.is-editor-empty:first-child::before {
+    @apply text-zinc-600 pointer-events-none float-left h-0;
+    content: attr(data-placeholder);
+  }
+
+  .tiptap h1 {
+    @apply text-3xl font-bold text-white mt-8 mb-4 leading-tight;
+  }
+
+  .tiptap h2 {
+    @apply text-2xl font-semibold text-white mt-6 mb-3;
+  }
+
+  .tiptap h3 {
+    @apply text-xl font-semibold text-zinc-100 mt-5 mb-2;
+  }
+
+  .tiptap ul {
+    @apply list-disc pl-6 my-3 space-y-1;
+  }
+
+  .tiptap ol {
+    @apply list-decimal pl-6 my-3 space-y-1;
+  }
+
+  .tiptap li {
+    @apply text-zinc-200;
+  }
+
+  .tiptap blockquote {
+    @apply border-l-4 border-brand-500 pl-4 my-4 text-zinc-400 italic;
+  }
+
+  .tiptap code {
+    @apply bg-surface-800 text-brand-300 px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+
+  .tiptap pre {
+    @apply bg-surface-900 rounded-lg p-4 my-4 overflow-x-auto border border-surface-700;
+  }
+
+  .tiptap pre code {
+    @apply bg-transparent text-zinc-300 p-0 text-sm;
+  }
+
+  .tiptap a {
+    @apply text-brand-400 underline underline-offset-2 hover:text-brand-300 transition-colors;
+  }
+
+  .tiptap hr {
+    @apply border-surface-700 my-6;
+  }
+
+  .tiptap img {
+    @apply rounded-lg max-w-full my-4;
+  }
+
+  /* Task list */
+  .tiptap ul[data-type="taskList"] {
+    @apply list-none pl-0;
+  }
+
+  .tiptap ul[data-type="taskList"] li {
+    @apply flex items-start gap-2;
+  }
+
+  .tiptap ul[data-type="taskList"] li > label {
+    @apply flex-shrink-0 mt-1;
+  }
+
+  .tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+    @apply w-4 h-4 accent-brand-500 cursor-pointer;
+  }
+
+  .tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+    @apply line-through text-zinc-500;
+  }
+
+  /* ─── Collaboration cursors ────────────────────────── */
+  .collaboration-cursor__caret {
+    border-left: 2px solid;
+    border-right: 2px solid;
+    margin-left: -1px;
+    margin-right: -1px;
+    pointer-events: none;
+    position: relative;
+    word-break: normal;
+  }
+
+  .collaboration-cursor__label {
+    @apply text-xs font-medium px-1.5 py-0.5 rounded-sm whitespace-nowrap;
+    position: absolute;
+    top: -1.5em;
+    left: -1px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .collaboration-cursor__caret:hover .collaboration-cursor__label,
+  .collaboration-cursor__caret:focus .collaboration-cursor__label {
+    opacity: 1;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+
+  .glass-dark {
+    @apply bg-black/30 backdrop-blur-xl border border-white/5;
+  }
+
+  .gradient-brand {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+  }
+}
