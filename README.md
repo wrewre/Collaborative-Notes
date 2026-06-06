@@ -9,15 +9,14 @@ A production-grade, highly scalable real-time collaborative notes application bu
 - **Rich Text Editor**: Support for headings, lists, code blocks with syntax highlighting, blockquotes, and multiple formatting options.
 - **Workspaces & RBAC**: Isolate notes within workspaces. Control access with Owner, Editor, and Viewer roles.
 - **Threaded Comments**: Leave comments on notes and reply in threads. Resolve or delete comments when done.
-- **Robust Persistence**: Edits sync to a Y-Websocket server, then broadcast to other instances via Redis Pub/Sub, and periodically flushed as snapshots to PostgreSQL using BullMQ.
+- **Robust Persistence**: Edits sync to the API via WebSockets and are periodically flushed as snapshots to PostgreSQL.
 - **Stunning UI**: Dark-mode, responsive, glassmorphism design using Tailwind CSS.
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, TipTap, Zustand, React Query
-- **Backend API**: Node.js, Fastify, Prisma ORM, JWT Authentication
-- **Collab Server**: `y-websocket`, Redis, BullMQ
-- **Database & Services**: PostgreSQL 15, Redis 7, MinIO (S3-compatible storage)
+- **Backend API**: Node.js, Fastify, Prisma ORM, JWT Authentication, Yjs WebSockets
+- **Database**: PostgreSQL 15
 - **Monorepo**: pnpm workspaces, Turborepo
 - **CI/CD**: GitHub Actions (Linting, Testing, Docker image builds to GHCR)
 
@@ -29,8 +28,7 @@ This project is a monorepo leveraging Turborepo.
 ├── apps/
 │   └── web/                # React Vite application
 ├── services/
-│   ├── api/                # Fastify REST API (Auth, Workspaces, Notes CRUD)
-│   └── collab/             # WebSocket server for Yjs sync
+│   └── api/                # Fastify REST API with Yjs WebSocket server
 ├── packages/
 │   ├── config/             # Shared Zod schemas for env validation
 │   ├── db/                 # Prisma schema, client, and migrations
@@ -63,7 +61,7 @@ The project uses `.env` files for configuration. For quick local Docker runs, `d
 
 ### 3. Run with Docker Compose (Recommended)
 
-The easiest way to run the entire stack (Postgres, Redis, MinIO, API, Collab Server, and Web Frontend) is via Docker Compose:
+The easiest way to run the entire stack (Postgres, API, and Web Frontend) is via Docker Compose:
 
 ```bash
 docker compose -f infra/docker-compose.yml up --build -d
@@ -71,11 +69,11 @@ docker compose -f infra/docker-compose.yml up --build -d
 
 ### 4. Run Locally (Development Mode)
 
-If you prefer to run the Node.js services locally while only running the databases in Docker:
+If you prefer to run the Node.js services locally while only running the database in Docker:
 
-1. Start databases:
+1. Start database:
 ```bash
-docker compose -f infra/docker-compose.yml up postgres redis minio minio-setup -d
+docker compose -f infra/docker-compose.yml up postgres -d
 ```
 
 2. Run Prisma migrations:
@@ -93,8 +91,7 @@ pnpm dev
 
 - **Web App**: http://localhost:3000
 - **REST API**: http://localhost:4000
-- **WebSocket Server**: ws://localhost:4001
-- **MinIO Console**: http://localhost:9001 (Credentials: `minioadmin` / `minioadmin`)
+- **WebSocket Route**: ws://localhost:4000/ws
 
 ## 🚢 Deployment
 
