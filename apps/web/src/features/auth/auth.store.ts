@@ -1,46 +1,21 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { User } from '@collab-notes/types'
-import { api } from '../../lib/api'
+/**
+ * auth.store.ts
+ *
+ * With Clerk, we no longer manage tokens or user state manually.
+ * Clerk's <ClerkProvider> and hooks (useUser, useAuth, useClerk)
+ * handle all of that.
+ *
+ * This file now just exports a helper to get the Clerk token
+ * so it can be passed to API calls and WebSocket connections.
+ */
 
-interface AuthState {
-  user: User | null
-  accessToken: string | null
-  setAuth: (user: User, token: string) => void
-  logout: () => Promise<void>
-  fetchMe: () => Promise<void>
+export async function getAuthToken(): Promise<string | null> {
+  // Clerk exposes window.Clerk after initialization
+  try {
+    const clerk = (window as any).Clerk
+    if (!clerk?.session) return null
+    return await clerk.session.getToken()
+  } catch {
+    return null
+  }
 }
-
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      accessToken: null,
-
-      setAuth: (user, accessToken) => {
-        localStorage.setItem('access_token', accessToken)
-        set({ user, accessToken })
-      },
-
-      logout: async () => {
-        try { await api.delete('/auth/logout') } catch {}
-        localStorage.removeItem('access_token')
-        set({ user: null, accessToken: null })
-        window.location.href = '/login'
-      },
-
-      fetchMe: async () => {
-        try {
-          const user = await api.get<User>('/auth/me')
-          set({ user })
-        } catch {
-          get().logout()
-        }
-      },
-    }),
-    {
-      name: 'auth-store',
-      partialize: (state) => ({ user: state.user, accessToken: state.accessToken }),
-    },
-  ),
-)

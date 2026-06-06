@@ -8,7 +8,7 @@ import websocket from '@fastify/websocket'
 import { validateApiEnv } from '@collab-notes/config'
 
 import { dbPlugin } from './plugins/db.js'
-import { jwtPlugin } from './plugins/jwt.js'
+import { clerkPlugin } from './plugins/clerk.js'
 
 import { authRoutes } from './routes/auth.js'
 import { workspaceRoutes } from './routes/workspaces.js'
@@ -42,21 +42,19 @@ async function bootstrap() {
   await app.register(multipart, {
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   })
-  
-  // Register websocket plugin BEFORE websocket routes
+
+  // Register websocket support
   await app.register(websocket)
 
   // App plugins
   await app.register(dbPlugin)
-  await app.register(jwtPlugin)
+  await app.register(clerkPlugin)
 
   // Routes
   await app.register(authRoutes, { prefix: '/auth' })
   await app.register(workspaceRoutes, { prefix: '/workspaces' })
   await app.register(noteRoutes, { prefix: '/notes' })
   await app.register(commentRoutes, { prefix: '/comments' })
-  
-  // Websocket route
   await app.register(websocketRoutes, { prefix: '/ws' })
 
   // Health check

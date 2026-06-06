@@ -1,6 +1,7 @@
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { IndexeddbPersistence } from 'y-indexeddb'
+import { getAuthToken } from '../features/auth/auth.store'
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:4000/ws'
 
@@ -16,12 +17,12 @@ const USER_COLORS = [
   '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16',
 ]
 
-export function createCollabProvider(
+export async function createCollabProvider(
   noteId: string,
   ydoc: Y.Doc,
   user: { id: string; name: string; color?: string },
-): CollabProvider {
-  const token = localStorage.getItem('access_token')
+): Promise<CollabProvider> {
+  const token = await getAuthToken()
   const docName = `doc-${noteId}`
   const userColor = user.color || USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)]
 
@@ -29,8 +30,13 @@ export function createCollabProvider(
   const localProvider = new IndexeddbPersistence(docName, ydoc)
 
   // WebSocket provider — syncs with server
+  // Token is passed as a query param (WebSocket connections can't set Authorization headers)
+  const wsUrl = token
+    ? `${WS_URL}/${docName}?token=${encodeURIComponent(token)}`
+    : `${WS_URL}/${docName}`
+
   const wsProvider = new WebsocketProvider(
-    `${WS_URL}/${docName}?token=${token}`,
+    wsUrl,
     docName,
     ydoc,
     { connect: true },

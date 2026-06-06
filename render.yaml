@@ -1,0 +1,77 @@
+# render.yaml — Infrastructure-as-Code for Render deployment
+# Docs: https://render.com/docs/blueprint-spec
+
+databases:
+  - name: collab-notes-db
+    databaseName: collabnotes
+    user: collabnotes
+    plan: free
+
+services:
+  # ─── Fastify API (REST + WebSocket) ─────────────────────────────────────────
+  - type: web
+    name: collab-notes-api
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: |
+      npm install -g pnpm@9 &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @collab-notes/config build &&
+      pnpm --filter @collab-notes/db generate &&
+      pnpm --filter @collab-notes/db migrate:deploy &&
+      pnpm --filter @collab-notes/api build
+    startCommand: node services/api/dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: collab-notes-db
+          property: connectionString
+      - key: CLERK_SECRET_KEY
+        sync: false           # You will paste this in the Render dashboard
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false           # You will paste this in the Render dashboard
+      - key: CORS_ORIGIN
+        fromService:
+          name: collab-notes-web
+          type: web
+          property: host
+          envVarKey: RENDER_EXTERNAL_URL
+    healthCheckPath: /health
+
+  # ─── React Frontend (Static Site) ───────────────────────────────────────────
+  - type: web
+    name: collab-notes-web
+    runtime: static
+    plan: free
+    rootDir: apps/web
+    buildCommand: |
+      npm install -g pnpm@9 &&
+      cd ../.. &&
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @collab-notes/types build &&
+      pnpm --filter @collab-notes/web build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: collab-notes-api
+          type: web
+          property: host
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_WS_URL
+        fromService:
+          name: collab-notes-api
+          type: web
+          property: host
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: VITE_CLERK_PUBLISHABLE_KEY
+        sync: false           # You will paste this in the Render dashboard
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

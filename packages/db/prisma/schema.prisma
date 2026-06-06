@@ -13,20 +13,19 @@ datasource db {
 // ─── Users ───────────────────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(uuid())
+  // id is the Clerk User ID (e.g. "user_2abc123...")
+  id        String   @id
   email     String   @unique
   name      String
   avatarUrl String?  @map("avatar_url")
-  password  String?  // null for OAuth users
-  provider  String   @default("email")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   workspaceMemberships WorkspaceMember[]
   ownedNotes           Note[]            @relation("NoteCreator")
   editedNotes          Note[]            @relation("NoteLastEditor")
   noteVersions         NoteVersion[]
   comments             Comment[]
-  attachments          Attachment[]
   invitedMembers       WorkspaceMember[] @relation("InvitedBy")
   folders              Folder[]
 

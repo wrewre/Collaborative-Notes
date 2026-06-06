@@ -12,8 +12,10 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG VITE_CLERK_PUBLISHABLE_KEY
 ENV VITE_API_URL=/api
 ENV VITE_WS_URL=ws://localhost:4000/ws
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 RUN pnpm --filter @collab-notes/types build
 RUN pnpm --filter @collab-notes/web build
 

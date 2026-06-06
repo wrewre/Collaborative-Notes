@@ -6,10 +6,8 @@ const apiEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
   DATABASE_URL: z.string().url(),
-  JWT_ACCESS_SECRET: z.string().min(32),
-  JWT_REFRESH_SECRET: z.string().min(32),
-  JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
+  CLERK_SECRET_KEY: z.string().min(1, 'CLERK_SECRET_KEY is required'),
+  CLERK_PUBLISHABLE_KEY: z.string().min(1, 'CLERK_PUBLISHABLE_KEY is required'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
 })
 

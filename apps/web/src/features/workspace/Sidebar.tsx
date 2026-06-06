@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { UserButton, useUser } from '@clerk/clerk-react'
 import { Folder, Workspace, User } from '@collab-notes/types'
-import { useAuthStore } from '../auth/auth.store'
 import { api } from '../../lib/api'
 
 interface SidebarProps {
@@ -19,7 +19,7 @@ export default function Sidebar({
   workspace, workspaces, folders, selectedFolder, onFolderSelect, user, workspaceId
 }: SidebarProps) {
   const navigate = useNavigate()
-  const logout = useAuthStore((s) => s.logout)
+  const { user: clerkUser } = useUser()
   const qc = useQueryClient()
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
@@ -152,25 +152,25 @@ export default function Sidebar({
         </div>
       </nav>
 
-      {/* User footer */}
+      {/* User footer — Clerk UserButton handles avatar, profile and sign-out */}
       <div className="p-3 border-t border-surface-800">
         <div className="flex items-center gap-2.5 px-2 py-2">
-          <div className="w-7 h-7 rounded-full gradient-brand flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {user?.name?.charAt(0).toUpperCase() || '?'}
-          </div>
+          <UserButton
+            afterSignOutUrl="/"
+            appearance={{
+              elements: {
+                avatarBox: 'w-7 h-7',
+              },
+            }}
+          />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-zinc-300 truncate">{user?.name}</p>
-            <p className="text-xs text-zinc-600 truncate">{user?.email}</p>
+            <p className="text-xs font-medium text-zinc-300 truncate">
+              {clerkUser?.fullName || user?.name}
+            </p>
+            <p className="text-xs text-zinc-600 truncate">
+              {clerkUser?.primaryEmailAddress?.emailAddress || user?.email}
+            </p>
           </div>
-          <button
-            onClick={() => logout()}
-            className="p-1 rounded text-zinc-600 hover:text-zinc-400 transition-colors"
-            title="Sign out"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
         </div>
       </div>
     </aside>

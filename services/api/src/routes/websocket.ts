@@ -1,24 +1,41 @@
 import { FastifyPluginAsync } from 'fastify'
 import { setupWSConnection } from 'y-websocket/bin/utils'
 import { persistenceManager } from '../collab/persistence.js'
+import { createClerkClient } from '@clerk/backend'
 import * as Y from 'yjs'
 
-// Need to safely import docs map from y-websocket internal utils
 import yutils from 'y-websocket/bin/utils'
 const docs = yutils.docs
 
+let clerkClient: ReturnType<typeof createClerkClient>
+
+function getClerkClient() {
+  if (!clerkClient) {
+    clerkClient = createClerkClient({
+      secretKey: process.env.CLERK_SECRET_KEY!,
+      publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+    })
+  }
+  return clerkClient
+}
+
 export const websocketRoutes: FastifyPluginAsync = async (app) => {
   app.get('/:documentId', { websocket: true }, async (connection, req) => {
-    let user;
+    // Extract Clerk token from ?token= query param (WebSocket can't set headers)
+    const token = (req.query as any).token as string | undefined
+
+    if (!token) {
+      connection.socket.close(4001, 'Unauthorized: no token')
+      return
+    }
+
     try {
-      const token = (req.query as any).token
-      if (token) {
-         user = app.jwt.verify(token)
-      } else {
-         throw new Error("No token")
-      }
+      const client = getClerkClient()
+      const { sub } = await client.verifyToken(token)
+
+      if (!sub) throw new Error('Invalid token sub')
     } catch {
-      connection.socket.close(4001, 'Unauthorized')
+      connection.socket.close(4001, 'Unauthorized: invalid token')
       return
     }
 
@@ -29,15 +46,14 @@ export const websocketRoutes: FastifyPluginAsync = async (app) => {
       gc: true,
     })
 
-    // Bind state from postgres on connect
-    const ydoc = getYDocFromSetup(docName)
+    // Bind Postgres snapshot into ydoc on connect
+    const ydoc = getYDoc(docName)
     if (ydoc) {
       await persistenceManager.bindState(docName, ydoc)
     }
 
     connection.socket.on('close', async () => {
-      // Save state on disconnect
-      const ydoc = getYDocFromSetup(docName)
+      const ydoc = getYDoc(docName)
       if (ydoc) {
         await persistenceManager.writeState(docName, ydoc)
       }
@@ -45,6 +61,6 @@ export const websocketRoutes: FastifyPluginAsync = async (app) => {
   })
 }
 
-function getYDocFromSetup(docName: string): Y.Doc | undefined {
+function getYDoc(docName: string): Y.Doc | undefined {
   return docs.get(docName)
 }
