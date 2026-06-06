@@ -2,7 +2,7 @@ import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { IndexeddbPersistence } from 'y-indexeddb'
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:4001'
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:4000/ws'
 
 export interface CollabProvider {
   wsProvider: WebsocketProvider

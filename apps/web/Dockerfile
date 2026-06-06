@@ -13,7 +13,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV VITE_API_URL=/api
-ENV VITE_WS_URL=ws://localhost:4001
+ENV VITE_WS_URL=ws://localhost:4000/ws
 RUN pnpm --filter @collab-notes/types build
 RUN pnpm --filter @collab-notes/web build
 

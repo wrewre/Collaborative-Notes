@@ -4,18 +4,17 @@ import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
+import websocket from '@fastify/websocket'
 import { validateApiEnv } from '@collab-notes/config'
 
-import { redisPlugin } from './plugins/redis.js'
 import { dbPlugin } from './plugins/db.js'
 import { jwtPlugin } from './plugins/jwt.js'
-import { s3Plugin } from './plugins/s3.js'
 
 import { authRoutes } from './routes/auth.js'
 import { workspaceRoutes } from './routes/workspaces.js'
 import { noteRoutes } from './routes/notes.js'
 import { commentRoutes } from './routes/comments.js'
-import { attachmentRoutes } from './routes/attachments.js'
+import { websocketRoutes } from './routes/websocket.js'
 
 const env = validateApiEnv(process.env as NodeJS.ProcessEnv)
 
@@ -43,19 +42,22 @@ async function bootstrap() {
   await app.register(multipart, {
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   })
+  
+  // Register websocket plugin BEFORE websocket routes
+  await app.register(websocket)
 
   // App plugins
-  await app.register(redisPlugin)
   await app.register(dbPlugin)
   await app.register(jwtPlugin)
-  await app.register(s3Plugin)
 
   // Routes
   await app.register(authRoutes, { prefix: '/auth' })
   await app.register(workspaceRoutes, { prefix: '/workspaces' })
   await app.register(noteRoutes, { prefix: '/notes' })
   await app.register(commentRoutes, { prefix: '/comments' })
-  await app.register(attachmentRoutes, { prefix: '/attachments' })
+  
+  // Websocket route
+  await app.register(websocketRoutes, { prefix: '/ws' })
 
   // Health check
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
