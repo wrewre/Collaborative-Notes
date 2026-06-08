@@ -20,10 +20,10 @@ export default function LandingPage() {
           <span className="font-bold text-lg text-white">Collab Notes</span>
         </div>
         <div className="flex items-center gap-3">
-          <Link to="/login" className="text-zinc-400 hover:text-zinc-100 px-4 py-2 rounded-lg transition-colors text-sm font-medium">
+          <Link to="/sign-in" className="text-zinc-400 hover:text-zinc-100 px-4 py-2 rounded-lg transition-colors text-sm font-medium">
             Sign in
           </Link>
-          <Link to="/register" className="gradient-brand text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-brand-500/20">
+          <Link to="/sign-up" className="gradient-brand text-white px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-brand-500/20">
             Get started
           </Link>
         </div>
@@ -48,13 +48,13 @@ export default function LandingPage() {
 
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <Link
-            to="/register"
+            to="/sign-up"
             className="gradient-brand text-white px-8 py-3.5 rounded-xl text-base font-semibold hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-brand-500/25"
           >
             Start for free
           </Link>
           <Link
-            to="/login"
+            to="/sign-in"
             className="glass text-zinc-300 px-8 py-3.5 rounded-xl text-base font-semibold hover:text-white transition-all"
           >
             Sign in
