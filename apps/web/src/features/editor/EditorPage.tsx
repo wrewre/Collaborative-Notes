@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useUser } from '@clerk/clerk-react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Collaboration from '@tiptap/extension-collaboration'
@@ -15,7 +16,6 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
 import { Note } from '@collab-notes/types'
 import { api } from '../../lib/api'
-import { useAuthStore } from '../auth/auth.store'
 import { getYDoc } from '../../lib/ydoc'
 import { createCollabProvider } from '../../lib/ws-provider'
 import EditorToolbar from './EditorToolbar'
@@ -27,9 +27,9 @@ const lowlight = createLowlight(common)
 export default function EditorPage() {
   const { workspaceId, noteId } = useParams<{ workspaceId: string; noteId: string }>()
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
+  const { user: clerkUser } = useUser()
   const qc = useQueryClient()
-  const providerRef = useRef<ReturnType<typeof createCollabProvider> | null>(null)
+  const providerRef = useRef<{ wsProvider: any; destroy: () => void } | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
   const [showComments, setShowComments] = useState(false)
   const [titleEditing, setTitleEditing] = useState(false)
@@ -55,6 +55,9 @@ export default function EditorPage() {
 
   const ydoc = noteId ? getYDoc(noteId) : null
 
+  const userName = clerkUser?.fullName || clerkUser?.firstName || 'Anonymous'
+  const userId = clerkUser?.id || 'anonymous'
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ history: false }),
@@ -69,13 +72,10 @@ export default function EditorPage() {
         ? [
             Collaboration.configure({ document: ydoc }),
             CollaborationCursor.configure({
-              provider: (() => {
-                // Provider is set after mount
-                return providerRef.current?.wsProvider
-              })(),
+              provider: providerRef.current?.wsProvider,
               user: {
-                name: user?.name || 'Anonymous',
-                color: '#6366f1',
+                name: userName,
+                color: '#8b5cf6',
               },
             }),
           ]
@@ -88,23 +88,31 @@ export default function EditorPage() {
 
   // Setup collab providers
   useEffect(() => {
-    if (!noteId || !ydoc || !user) return
+    if (!noteId || !ydoc || !clerkUser) return
 
-    const provider = createCollabProvider(noteId, ydoc, {
-      id: user.id,
-      name: user.name,
-    })
-    providerRef.current = provider
+    let mounted = true
 
-    provider.wsProvider.on('status', ({ status }: { status: string }) => {
-      setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')
+    createCollabProvider(noteId, ydoc, {
+      id: userId,
+      name: userName,
+    }).then((provider) => {
+      if (!mounted) {
+        provider.destroy()
+        return
+      }
+      providerRef.current = provider
+
+      provider.wsProvider.on('status', ({ status }: { status: string }) => {
+        setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')
+      })
     })
 
     return () => {
-      provider.destroy()
+      mounted = false
+      providerRef.current?.destroy()
       providerRef.current = null
     }
-  }, [noteId, ydoc, user])
+  }, [noteId, ydoc, clerkUser, userId, userName])
 
   // Destroy editor on unmount
   useEffect(() => {
@@ -143,6 +151,7 @@ export default function EditorPage() {
             <h1
               className="flex-1 text-lg font-semibold text-zinc-200 truncate cursor-pointer hover:text-white transition-colors"
               onClick={() => setTitleEditing(true)}
+              title="Click to rename"
             >
               {note?.title || 'Untitled'}
             </h1>
@@ -186,7 +195,7 @@ export default function EditorPage() {
 
       {/* Comments panel */}
       {showComments && (
-        <CommentPanel noteId={noteId} workspaceId={workspaceId!} user={user} />
+        <CommentPanel noteId={noteId} workspaceId={workspaceId!} user={null} />
       )}
     </div>
   )
