@@ -1,31 +1,43 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api'
+/**
+ * api.ts — Authenticated API client using Clerk tokens
+ *
+ * Clerk manages tokens via its SDK. We fetch the current session token
+ * before every request using the global `window.Clerk` object.
+ */
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+
+async function getClerkToken(): Promise<string | null> {
+  try {
+    const clerk = (window as any).Clerk
+    if (!clerk?.session) return null
+    return await clerk.session.getToken()
+  } catch {
+    return null
+  }
+}
 
 class ApiClient {
-  private getHeaders(): Record<string, string> {
-    const token = localStorage.getItem('access_token')
-    return {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    }
-  }
-
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const token = await getClerkToken()
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(init?.headers as Record<string, string> || {}),
+    }
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const res = await fetch(`${API_BASE}${path}`, {
       ...init,
-      headers: { ...this.getHeaders(), ...(init?.headers || {}) },
-      credentials: 'include',
+      headers,
     })
 
     if (res.status === 401) {
-      // Try to refresh
-      const refreshed = await this.refresh()
-      if (refreshed) {
-        // Retry original request
-        return this.request<T>(path, init)
-      }
-      // Force logout
-      localStorage.removeItem('access_token')
-      window.location.href = '/login'
+      // Clerk session expired — redirect to sign in
+      window.location.href = '/sign-in'
       throw new Error('Unauthorized')
     }
 
@@ -36,21 +48,6 @@ class ApiClient {
 
     if (res.status === 204) return undefined as T
     return res.json() as Promise<T>
-  }
-
-  private async refresh(): Promise<boolean> {
-    try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-      if (!res.ok) return false
-      const data = await res.json()
-      localStorage.setItem('access_token', data.accessToken)
-      return true
-    } catch {
-      return false
-    }
   }
 
   get<T>(path: string) { return this.request<T>(path) }
