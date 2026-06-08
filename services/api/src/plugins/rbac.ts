@@ -19,7 +19,7 @@ export function requireRole(minimumRole: Role) {
     }
 
     const member = await request.server.prisma.workspaceMember.findUnique({
-      where: { workspaceId_userId: { workspaceId: wid, userId: request.user.sub } },
+      where: { workspaceId_userId: { workspaceId: wid, userId: request.clerkUserId } },
     })
 
     if (!member) {
@@ -36,26 +36,5 @@ export function requireRole(minimumRole: Role) {
 
     // Attach the member's role to the request for downstream handlers
     ;(request as FastifyRequest & { memberRole: Role }).memberRole = member.role as Role
-  }
-}
-
-export function canEditNote(noteId: string) {
-  return async (request: FastifyRequest, reply: FastifyReply) => {
-    const note = await request.server.prisma.note.findUnique({
-      where: { id: noteId },
-      select: { workspaceId: true, isDeleted: true },
-    })
-
-    if (!note || note.isDeleted) {
-      return reply.code(404).send({ statusCode: 404, error: 'Not Found', message: 'Note not found' })
-    }
-
-    const member = await request.server.prisma.workspaceMember.findUnique({
-      where: { workspaceId_userId: { workspaceId: note.workspaceId, userId: request.user.sub } },
-    })
-
-    if (!member || roleRank[member.role as Role] < roleRank['editor']) {
-      return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Insufficient permissions' })
-    }
   }
 }
