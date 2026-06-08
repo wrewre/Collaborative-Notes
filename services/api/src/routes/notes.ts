@@ -23,14 +23,14 @@ export const noteRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /notes/:id
   fastify.get<{ Params: { id: string } }>('/:id', async (request, reply) => {
-    const access = await checkNoteAccess(request.params.id, request.user.sub)
+    const access = await checkNoteAccess(request.params.id, request.clerkUserId)
     if (!access) return reply.code(404).send({ statusCode: 404, error: 'Not Found', message: 'Note not found' })
     return reply.send(access.note)
   })
 
   // PATCH /notes/:id — metadata only (title, folderId)
   fastify.patch<{ Params: { id: string } }>('/:id', async (request, reply) => {
-    const access = await checkNoteAccess(request.params.id, request.user.sub, 'editor')
+    const access = await checkNoteAccess(request.params.id, request.clerkUserId, 'editor')
     if (!access) return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Cannot edit note' })
 
     const body = z.object({
@@ -40,14 +40,14 @@ export const noteRoutes: FastifyPluginAsync = async (fastify) => {
 
     const note = await fastify.prisma.note.update({
       where: { id: request.params.id },
-      data: { ...body, lastEditedById: request.user.sub },
+      data: { ...body, lastEditedById: request.clerkUserId },
     })
     return reply.send(note)
   })
 
   // DELETE /notes/:id — soft delete
   fastify.delete<{ Params: { id: string } }>('/:id', async (request, reply) => {
-    const access = await checkNoteAccess(request.params.id, request.user.sub, 'editor')
+    const access = await checkNoteAccess(request.params.id, request.clerkUserId, 'editor')
     if (!access) return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Cannot delete note' })
 
     await fastify.prisma.note.update({
@@ -59,7 +59,7 @@ export const noteRoutes: FastifyPluginAsync = async (fastify) => {
 
   // GET /notes/:id/versions
   fastify.get<{ Params: { id: string } }>('/:id/versions', async (request, reply) => {
-    const access = await checkNoteAccess(request.params.id, request.user.sub)
+    const access = await checkNoteAccess(request.params.id, request.clerkUserId)
     if (!access) return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Access denied' })
 
     const versions = await fastify.prisma.noteVersion.findMany({
@@ -73,7 +73,7 @@ export const noteRoutes: FastifyPluginAsync = async (fastify) => {
 
   // POST /notes/:id/versions — create named snapshot
   fastify.post<{ Params: { id: string } }>('/:id/versions', async (request, reply) => {
-    const access = await checkNoteAccess(request.params.id, request.user.sub, 'editor')
+    const access = await checkNoteAccess(request.params.id, request.clerkUserId, 'editor')
     if (!access) return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Cannot snapshot note' })
 
     const note = await fastify.prisma.note.findUnique({
@@ -89,16 +89,16 @@ export const noteRoutes: FastifyPluginAsync = async (fastify) => {
         noteId: request.params.id,
         ydocSnapshot: note.ydocSnapshot,
         contentText: note.contentText,
-        createdById: request.user.sub,
+        createdById: request.clerkUserId,
       },
       select: { id: true, noteId: true, contentText: true, createdById: true, createdAt: true },
     })
     return reply.code(201).send(version)
   })
 
-  // GET /notes/:id/ydoc — return raw Yjs binary snapshot (for collab server recovery)
+  // GET /notes/:id/ydoc — return raw Yjs binary snapshot
   fastify.get<{ Params: { id: string } }>('/:id/ydoc', async (request, reply) => {
-    const access = await checkNoteAccess(request.params.id, request.user.sub)
+    const access = await checkNoteAccess(request.params.id, request.clerkUserId)
     if (!access) return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Access denied' })
 
     const note = await fastify.prisma.note.findUnique({
