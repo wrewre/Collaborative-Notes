@@ -1,24 +1,28 @@
-# Real-Time Collaborative Notes App 🚀
+# Real-Time Collaborative Notes 🚀
 
-A production-grade, highly scalable real-time collaborative notes application built with a modern tech stack. Experience Google Docs-like simultaneous editing with multiple users, offline capabilities, and a beautiful dark-mode glassmorphism UI.
+A real-time collaborative notes application designed for a seamless, Google Docs-like simultaneous editing experience. 
+
+Built with a fast, modern tech stack, this project features robust Yjs-powered conflict resolution, secure Clerk authentication, and a stunning dark-mode glassmorphism UI.
 
 ## ✨ Key Features
 
 - **Real-Time Collaboration**: Powered by Yjs (CRDT) and TipTap for conflict-free, multi-user rich text editing.
-- **Offline Support**: Edits are stored locally using IndexedDB (`y-indexeddb`) and synced automatically when back online.
-- **Rich Text Editor**: Support for headings, lists, code blocks with syntax highlighting, blockquotes, and multiple formatting options.
+- **Secure Authentication**: Fully integrated with [Clerk](https://clerk.com/) for secure, hassle-free user management.
 - **Workspaces & RBAC**: Isolate notes within workspaces. Control access with Owner, Editor, and Viewer roles.
+- **Rich Text Editor**: Support for headings, lists, code blocks with syntax highlighting, and formatting options.
 - **Threaded Comments**: Leave comments on notes and reply in threads. Resolve or delete comments when done.
 - **Robust Persistence**: Edits sync to the API via WebSockets and are periodically flushed as snapshots to PostgreSQL.
+- **Offline Support**: Edits are stored locally using IndexedDB and synced automatically when back online.
 - **Stunning UI**: Dark-mode, responsive, glassmorphism design using Tailwind CSS.
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, TipTap, Zustand, React Query
-- **Backend API**: Node.js, Fastify, Prisma ORM, JWT Authentication, Yjs WebSockets
-- **Database**: PostgreSQL 15
+- **Backend**: Node.js, Fastify, Prisma ORM, Yjs WebSockets
+- **Auth**: Clerk
+- **Database**: PostgreSQL
 - **Monorepo**: pnpm workspaces, Turborepo
-- **CI/CD**: GitHub Actions (Linting, Testing, Docker image builds to GHCR)
+- **Deployment**: Render (Zero-config `render.yaml`)
 
 ## 📂 Project Structure
 
@@ -33,8 +37,7 @@ This project is a monorepo leveraging Turborepo.
 │   ├── config/             # Shared Zod schemas for env validation
 │   ├── db/                 # Prisma schema, client, and migrations
 │   └── types/              # Shared TypeScript definitions
-├── infra/                  # Docker Compose configuration
-└── .github/workflows/      # CI/CD pipelines
+└── render.yaml             # Render Blueprint for automated deployment
 ```
 
 ## 🚀 Getting Started
@@ -43,7 +46,8 @@ This project is a monorepo leveraging Turborepo.
 
 - [Node.js](https://nodejs.org/) v20+
 - [pnpm](https://pnpm.io/) v9+
-- [Docker](https://www.docker.com/) & Docker Compose
+- A [Clerk](https://clerk.com/) account (for Auth keys)
+- PostgreSQL database (Local or hosted like Supabase/Neon)
 
 ### 1. Clone & Install Dependencies
 
@@ -57,32 +61,21 @@ pnpm install
 
 ### 2. Environment Variables
 
-The project uses `.env` files for configuration. For quick local Docker runs, `docker-compose.yml` provides all required environment variables automatically.
-
-### 3. Run with Docker Compose (Recommended)
-
-The easiest way to run the entire stack (Postgres, API, and Web Frontend) is via Docker Compose:
+Copy the example environment files and fill in your Clerk and Database URLs:
 
 ```bash
-docker compose -f infra/docker-compose.yml up --build -d
+cp apps/web/.env.example apps/web/.env.local
+cp services/api/.env.example services/api/.env
 ```
 
-### 4. Run Locally (Development Mode)
+### 3. Run Locally
 
-If you prefer to run the Node.js services locally while only running the database in Docker:
-
-1. Start database:
+1. Run Prisma migrations to set up your database schema:
 ```bash
-docker compose -f infra/docker-compose.yml up postgres -d
-```
-
-2. Run Prisma migrations:
-```bash
-# Set DATABASE_URL locally in packages/db/.env first
 pnpm --filter @collab-notes/db migrate:deploy
 ```
 
-3. Start all services via Turborepo:
+2. Start all services concurrently via Turborepo:
 ```bash
 pnpm dev
 ```
@@ -90,12 +83,15 @@ pnpm dev
 ### 🌐 Accessing the Services
 
 - **Web App**: http://localhost:3000
-- **REST API**: http://localhost:4000
-- **WebSocket Route**: ws://localhost:4000/ws
+- **REST & WS API**: http://localhost:4000
 
 ## 🚢 Deployment
 
-The repository includes GitHub Actions workflows (`.github/workflows/deploy.yml`) that automatically build Docker images for `api`, `collab`, and `web`, pushing them to the GitHub Container Registry (GHCR) upon merges to the `main` branch.
+This project includes a `render.yaml` Blueprint for 1-click deployment on [Render](https://render.com).
+
+1. Connect your GitHub repository to Render using the Blueprint feature.
+2. Render will automatically provision a PostgreSQL database, the Node.js API service, and a static site for the React frontend.
+3. Add your Clerk API keys as environment variables in the Render dashboard.
 
 ## 📄 License
 
