@@ -24,6 +24,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /workspaces — create workspace
   fastify.post('/', async (request, reply) => {
     const body = createWorkspaceSchema.parse(request.body)
+    const userId = request.clerkUserId
 
     const existing = await fastify.prisma.workspace.findUnique({ where: { slug: body.slug } })
     if (existing) {
@@ -35,7 +36,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
         name: body.name,
         slug: body.slug,
         members: {
-          create: { userId: request.user.sub, role: 'owner' },
+          create: { userId, role: 'owner' },
         },
       },
     })
@@ -45,7 +46,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /workspaces — list user's workspaces
   fastify.get('/', async (request) => {
     const memberships = await fastify.prisma.workspaceMember.findMany({
-      where: { userId: request.user.sub },
+      where: { userId: request.clerkUserId },
       include: { workspace: true },
       orderBy: { joinedAt: 'desc' },
     })
@@ -55,7 +56,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /workspaces/:id
   fastify.get<{ Params: { id: string } }>('/:id', async (request, reply) => {
     const member = await fastify.prisma.workspaceMember.findUnique({
-      where: { workspaceId_userId: { workspaceId: request.params.id, userId: request.user.sub } },
+      where: { workspaceId_userId: { workspaceId: request.params.id, userId: request.clerkUserId } },
       include: { workspace: { include: { members: { include: { user: { select: { id: true, email: true, name: true, avatarUrl: true } } } } } } },
     })
     if (!member) return reply.code(404).send({ statusCode: 404, error: 'Not Found', message: 'Workspace not found' })
@@ -85,7 +86,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
 
       const user = await fastify.prisma.user.findUnique({ where: { email: body.email } })
       if (!user) {
-        return reply.code(404).send({ statusCode: 404, error: 'Not Found', message: 'User not found' })
+        return reply.code(404).send({ statusCode: 404, error: 'Not Found', message: 'User not found. They must sign in at least once first.' })
       }
 
       const existing = await fastify.prisma.workspaceMember.findUnique({
@@ -100,7 +101,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
           workspaceId: request.params.id,
           userId: user.id,
           role: body.role,
-          invitedById: request.user.sub,
+          invitedById: request.clerkUserId,
         },
         include: { user: { select: { id: true, email: true, name: true, avatarUrl: true } } },
       })
@@ -141,9 +142,8 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
       const { wsId } = request.params
       const { folderId, search, cursor } = request.query
 
-      // Verify membership
       const member = await fastify.prisma.workspaceMember.findUnique({
-        where: { workspaceId_userId: { workspaceId: wsId, userId: request.user.sub } },
+        where: { workspaceId_userId: { workspaceId: wsId, userId: request.clerkUserId } },
       })
       if (!member) return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Not a member' })
 
@@ -176,8 +176,10 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
     '/:wsId/notes',
     async (request, reply) => {
       const { wsId } = request.params
+      const userId = request.clerkUserId
+
       const member = await fastify.prisma.workspaceMember.findUnique({
-        where: { workspaceId_userId: { workspaceId: wsId, userId: request.user.sub } },
+        where: { workspaceId_userId: { workspaceId: wsId, userId } },
       })
       if (!member || (member.role as Role) === 'viewer') {
         return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Cannot create notes' })
@@ -189,7 +191,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
       }).parse(request.body)
 
       const note = await fastify.prisma.note.create({
-        data: { workspaceId: wsId, createdById: request.user.sub, ...body },
+        data: { workspaceId: wsId, createdById: userId, ...body },
       })
       return reply.code(201).send(note)
     },
@@ -198,7 +200,7 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /workspaces/:wsId/folders
   fastify.get<{ Params: { wsId: string } }>('/:wsId/folders', async (request, reply) => {
     const member = await fastify.prisma.workspaceMember.findUnique({
-      where: { workspaceId_userId: { workspaceId: request.params.wsId, userId: request.user.sub } },
+      where: { workspaceId_userId: { workspaceId: request.params.wsId, userId: request.clerkUserId } },
     })
     if (!member) return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Not a member' })
 
@@ -212,14 +214,16 @@ export const workspaceRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /workspaces/:wsId/folders
   fastify.post<{ Params: { wsId: string } }>('/:wsId/folders', async (request, reply) => {
     const body = z.object({ name: z.string().min(1), parentId: z.string().optional() }).parse(request.body)
+    const userId = request.clerkUserId
+
     const member = await fastify.prisma.workspaceMember.findUnique({
-      where: { workspaceId_userId: { workspaceId: request.params.wsId, userId: request.user.sub } },
+      where: { workspaceId_userId: { workspaceId: request.params.wsId, userId } },
     })
     if (!member || (member.role as Role) === 'viewer') {
       return reply.code(403).send({ statusCode: 403, error: 'Forbidden', message: 'Cannot create folders' })
     }
     const folder = await fastify.prisma.folder.create({
-      data: { workspaceId: request.params.wsId, name: body.name, parentId: body.parentId, createdById: request.user.sub },
+      data: { workspaceId: request.params.wsId, name: body.name, parentId: body.parentId, createdById: userId },
     })
     return reply.code(201).send(folder)
   })
